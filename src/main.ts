@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
-import * as morgan from 'morgan';
+import morgan from 'morgan';
 import helmet from 'helmet';
 import { validateEnvironmentVariables } from './utils/config-validation';
 import { RedisIoAdapter } from './ws/redis-io.adapter';

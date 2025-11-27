@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { PhotoService } from '../photo/photo.service';
-import * as sharp from 'sharp';
+import sharp from 'sharp';
 
 @Injectable()
 export class UploadsService {

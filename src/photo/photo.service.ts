@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
-import * as sharp from 'sharp';
+import sharp from 'sharp';
 
 /**
  * Unified PhotoService for all image uploads across the application

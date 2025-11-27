@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { PhotoService } from './photo.service';
 import { SupabaseService } from '../supabase/supabase.service';
-import * as sharp from 'sharp';
+import sharp from 'sharp';
 
 describe('PhotoService', () => {
   let service: PhotoService;
