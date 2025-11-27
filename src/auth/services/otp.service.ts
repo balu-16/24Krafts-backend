@@ -14,20 +14,29 @@ export class OtpService {
 
   /**
    * Get SMS configuration from environment variables
+   * All values must be configured in environment - no hardcoded defaults
    */
   private getSmsConfig() {
     const secret = this.configService.get<string>('SMS_SECRET');
-    if (!secret) {
-      throw new Error('SMS_SECRET environment variable is required');
+    const sender = this.configService.get<string>('SMS_SENDER');
+    const tempid = this.configService.get<string>('SMS_TEMPID');
+    const route = this.configService.get<string>('SMS_ROUTE');
+    const msgtype = this.configService.get<string>('SMS_MSGTYPE');
+    const baseUrl = this.configService.get<string>('SMS_BASE_URL');
+
+    if (!secret || !sender || !tempid || !baseUrl) {
+      throw new Error(
+        'SMS configuration incomplete. Required env vars: SMS_SECRET, SMS_SENDER, SMS_TEMPID, SMS_BASE_URL',
+      );
     }
 
     return {
       secret,
-      sender: this.configService.get<string>('SMS_SENDER', 'NIGHAI'),
-      tempid: this.configService.get<string>('SMS_TEMPID', '1207174264191607433'),
-      route: this.configService.get<string>('SMS_ROUTE', 'TA'),
-      msgtype: this.configService.get<string>('SMS_MSGTYPE', '1'),
-      baseUrl: this.configService.get<string>('SMS_BASE_URL', 'http://43.252.88.250/index.php/smsapi/httpapi/'),
+      sender,
+      tempid,
+      route: route || 'TA',
+      msgtype: msgtype || '1',
+      baseUrl,
     };
   }
 
