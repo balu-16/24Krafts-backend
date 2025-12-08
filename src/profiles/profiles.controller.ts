@@ -11,12 +11,12 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ProfilesService } from './profiles.service';
-import { SessionGuard } from '../auth/guards/session.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UpdateProfileDto, BecomeRecruiterDto, UpgradePremiumDto } from './dto/profile.dto';
 
 @Controller('profiles')
-@UseGuards(SessionGuard)
+@UseGuards(JwtAuthGuard)
 export class ProfilesController {
   private readonly logger = new Logger(ProfilesController.name);
   

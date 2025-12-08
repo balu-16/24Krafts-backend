@@ -1,8 +1,7 @@
-import { Controller, Post, Body, Get, UseGuards, Request, Headers } from '@nestjs/common';
+import { Controller, Post, Body, Get, UseGuards, Request } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SendOtpDto, VerifyOtpDto, SignupDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { SessionGuard } from './guards/session.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -56,44 +55,6 @@ export class AuthController {
   @Post('cleanup-otps')
   async cleanupOtps() {
     return this.authService.cleanupExpiredOtps();
-  }
-
-  /**
-   * Session-based login: verify OTP, create a persistent session
-   * POST /auth/session/login
-   */
-  @Post('session/login')
-  async sessionLogin(@Body() body: { phone: string; otp: string; deviceInfo?: string }) {
-    const { phone, otp, deviceInfo } = body;
-    return this.authService.loginWithOtp(phone, otp, deviceInfo);
-  }
-
-  /**
-   * Session validate: validates Authorization: Session <id> via SessionGuard
-   * GET /auth/session/validate
-   */
-  @Get('session/validate')
-  @UseGuards(SessionGuard)
-  async validateSession(@Request() req: any) {
-    // If guard passed, request.user is attached; return role and basic user info
-    return {
-      valid: true,
-      user: req.user,
-      role: req.user?.role,
-    };
-  }
-
-  /**
-   * Session logout: invalidate the session id
-   * POST /auth/session/logout
-   */
-  @Post('session/logout')
-  async sessionLogout(@Headers('authorization') authHeader?: string) {
-    if (!authHeader || !authHeader.startsWith('Session ')) {
-      return { success: true }; // Idempotent: nothing to invalidate
-    }
-    const sessionId = authHeader.substring('Session '.length).trim();
-    return this.authService.invalidateSession(sessionId);
   }
 }
 

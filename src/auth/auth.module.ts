@@ -7,7 +7,6 @@ import { AuthService } from './auth.service';
 import { OtpService } from './services/otp.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { SessionGuard } from './guards/session.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { SupabaseModule } from '../supabase/supabase.module';
 import { PhotoModule } from '../photo/photo.module';
@@ -33,8 +32,8 @@ import { PhotoModule } from '../photo/photo.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, OtpService, JwtStrategy, JwtAuthGuard, SessionGuard, RolesGuard],
-  exports: [AuthService, OtpService, JwtAuthGuard, SessionGuard, RolesGuard],
+  providers: [AuthService, OtpService, JwtStrategy, JwtAuthGuard, RolesGuard],
+  exports: [AuthService, OtpService, JwtAuthGuard, RolesGuard],
 })
 export class AuthModule {}
 
