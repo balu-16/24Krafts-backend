@@ -14,12 +14,12 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PostsService } from './posts.service';
-import { SessionGuard } from '../auth/guards/session.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, CurrentProfile } from '../auth/decorators/current-user.decorator';
 import { CreatePostDto, UpdatePostDto, CreateCommentDto, ApplyToProjectDto, UpdateApplicationStatusDto } from './dto/post.dto';
 
 @Controller('posts')
-@UseGuards(SessionGuard)
+@UseGuards(JwtAuthGuard)
 export class PostsController {
   private readonly logger = new Logger(PostsController.name);
   

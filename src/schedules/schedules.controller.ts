@@ -10,7 +10,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { SchedulesService } from './schedules.service';
-import { SessionGuard } from '../auth/guards/session.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentProfile } from '../auth/decorators/current-user.decorator';
@@ -21,7 +21,7 @@ import {
 } from './dto/schedule.dto';
 
 @Controller('schedules')
-@UseGuards(SessionGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class SchedulesController {
   constructor(private readonly schedulesService: SchedulesService) {}
 
