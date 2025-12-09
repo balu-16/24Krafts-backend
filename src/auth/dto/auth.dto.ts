@@ -24,11 +24,6 @@ export class SignupDto {
 
   @IsString()
   @IsNotEmpty()
-  @Length(6, 6, { message: 'OTP must be 6 digits' })
-  otp: string;
-
-  @IsString()
-  @IsNotEmpty()
   firstName: string;
 
   @IsString()

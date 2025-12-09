@@ -29,7 +29,7 @@ export class AuthController {
   /**
    * Complete signup with all user details
    * POST /auth/signup
-   * Verifies OTP and creates user account
+   * Creates user account (OTP should be verified via /auth/verify-otp before calling this)
    */
   @Post('signup')
   async signup(@Body() signupDto: SignupDto) {
