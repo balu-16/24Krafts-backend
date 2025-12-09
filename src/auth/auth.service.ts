@@ -124,7 +124,7 @@ export class AuthService {
       const formattedPhone = this.otpService.formatPhoneNumber(signupDto.phone);
 
       // Verify OTP first; if invalid, allow signup if a prior verification exists within a grace window
-      const verification = await this.otpService.verifyOTP(formattedPhone, signupDto.otp);
+      const verification = await this.otpService.verifyOrConfirmOTP(formattedPhone, signupDto.otp);
 
       if (!verification.isValid) {
         const admin = this.supabaseService.getAdminClient();
