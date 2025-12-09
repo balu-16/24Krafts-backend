@@ -123,24 +123,6 @@ export class AuthService {
       // Format phone number
       const formattedPhone = this.otpService.formatPhoneNumber(signupDto.phone);
 
-      // Verify OTP first; if invalid, allow signup if a prior verification exists within a grace window
-      const verification = await this.otpService.verifyOrConfirmOTP(formattedPhone, signupDto.otp);
-
-      if (!verification.isValid) {
-        const admin = this.supabaseService.getAdminClient();
-        const { data: recent } = await admin
-          .from('otp_verifications')
-          .select('verified_at')
-          .eq('phone', formattedPhone)
-          .order('created_at', { ascending: false })
-          .limit(1);
-        const lastVerifiedAt = Array.isArray(recent) && recent.length > 0 ? recent[0]?.verified_at : null;
-        const withinGrace = lastVerifiedAt && (Date.now() - new Date(lastVerifiedAt).getTime()) < 10 * 60 * 1000;
-        if (!withinGrace) {
-          throw new UnauthorizedException(verification.message);
-        }
-      }
-
       // Check if user already exists
       const supabase = this.supabaseService.getAdminClient();
       const { data: existingUser } = await supabase
