@@ -1,5 +1,5 @@
 import { Controller, Post, Body, Get, UseGuards, Request, Headers, UnauthorizedException, HttpCode } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { SendOtpDto, VerifyOtpDto, SignupDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -7,7 +7,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Post('send-otp')
   @ApiOperation({
@@ -90,12 +90,6 @@ The \`access_token\` must be the one received from \`/auth/verify-otp\` endpoint
 The phone number is extracted from the token - do not include it in the request body.
 
 **Token validity:** 10 minutes from OTP verification`,
-  })
-  @ApiHeader({
-    name: 'Authorization',
-    description: 'Bearer token from verify-otp response',
-    required: true,
-    example: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
   })
   @ApiResponse({
     status: 201,

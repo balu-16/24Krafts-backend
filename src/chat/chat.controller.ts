@@ -8,6 +8,7 @@ import {
   UseGuards,
   Headers,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { ChatService } from './chat.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -18,6 +19,8 @@ import {
   UpdateTypingDto,
 } from './dto/chat.dto';
 
+@ApiTags('Chat')
+@ApiBearerAuth('JWT-auth')
 @Controller()
 @UseGuards(JwtAuthGuard)
 export class ChatController {
@@ -25,6 +28,11 @@ export class ChatController {
 
   // Conversations
   @Get('conversations')
+  @ApiOperation({ summary: 'List conversations', description: 'Get all conversations for a profile' })
+  @ApiQuery({ name: 'profileId', required: true, description: 'Profile ID' })
+  @ApiQuery({ name: 'cursor', required: false, description: 'Pagination cursor' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Number of results per page', example: 20 })
+  @ApiResponse({ status: 200, description: 'List of conversations returned successfully' })
   async listConversations(
     @Query('profileId') profileId: string,
     @Query('cursor') cursor?: string,
@@ -45,6 +53,10 @@ export class ChatController {
   }
 
   @Get('conversations/:id')
+  @ApiOperation({ summary: 'Get conversation by ID', description: 'Get conversation details' })
+  @ApiParam({ name: 'id', description: 'Conversation UUID' })
+  @ApiResponse({ status: 200, description: 'Conversation details returned successfully' })
+  @ApiResponse({ status: 404, description: 'Conversation not found' })
   async getConversation(@Param('id') id: string, @Headers('authorization') authHeader?: string) {
     const token = authHeader?.startsWith('Bearer ')
       ? authHeader.substring('Bearer '.length)
@@ -53,6 +65,8 @@ export class ChatController {
   }
 
   @Post('conversations')
+  @ApiOperation({ summary: 'Create conversation', description: 'Start a new conversation with one or more users' })
+  @ApiResponse({ status: 201, description: 'Conversation created successfully' })
   async createConversation(
     @Body() createConversationDto: CreateConversationDto,
     @CurrentProfile() profile: any,
@@ -66,6 +80,11 @@ export class ChatController {
 
   // Messages
   @Get('conversations/:id/messages')
+  @ApiOperation({ summary: 'Get messages', description: 'Get messages in a conversation' })
+  @ApiParam({ name: 'id', description: 'Conversation UUID' })
+  @ApiQuery({ name: 'cursor', required: false, description: 'Pagination cursor' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Number of results per page', example: 40 })
+  @ApiResponse({ status: 200, description: 'List of messages returned successfully' })
   async getMessages(
     @Param('id') conversationId: string,
     @Query('cursor') cursor?: string,
@@ -87,6 +106,9 @@ export class ChatController {
 
   @Post('conversations/:id/messages')
   @Throttle({ default: { limit: 10, ttl: 1000 } }) // 10 messages per second
+  @ApiOperation({ summary: 'Send message', description: 'Send a message in a conversation (rate limited: 10 messages per second)' })
+  @ApiParam({ name: 'id', description: 'Conversation UUID' })
+  @ApiResponse({ status: 201, description: 'Message sent successfully' })
   async sendMessage(
     @Param('id') conversationId: string,
     @Body() sendMessageDto: SendMessageDto,
@@ -97,6 +119,9 @@ export class ChatController {
 
   // Typing indicator
   @Post('conversations/:id/typing')
+  @ApiOperation({ summary: 'Update typing status', description: 'Indicate typing status in a conversation' })
+  @ApiParam({ name: 'id', description: 'Conversation UUID' })
+  @ApiResponse({ status: 200, description: 'Typing status updated successfully' })
   async updateTyping(
     @Param('id') conversationId: string,
     @Body() updateTypingDto: UpdateTypingDto,
@@ -116,6 +141,9 @@ export class ChatController {
 
   // Presence
   @Post('conversations/:id/presence')
+  @ApiOperation({ summary: 'Update presence', description: 'Update online presence in a conversation' })
+  @ApiParam({ name: 'id', description: 'Conversation UUID' })
+  @ApiResponse({ status: 200, description: 'Presence updated successfully' })
   async updatePresence(
     @Param('id') conversationId: string,
     @CurrentProfile() profile: any,

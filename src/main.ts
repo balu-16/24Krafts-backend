@@ -121,6 +121,7 @@ Authorization: Bearer <access_token>
       },
       'JWT-auth',
     )
+    .addTag('Health', 'Health check endpoints')
     .addTag('Auth', 'Authentication endpoints - OTP, Login, Signup')
     .addTag('Users', 'User management')
     .addTag('Profiles', 'User profile management')

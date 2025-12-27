@@ -10,11 +10,14 @@ import {
   UnauthorizedException,
   Logger,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ProfilesService } from './profiles.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UpdateProfileDto, BecomeRecruiterDto, UpgradePremiumDto } from './dto/profile.dto';
 
+@ApiTags('Profiles')
+@ApiBearerAuth('JWT-auth')
 @Controller('profiles')
 @UseGuards(JwtAuthGuard)
 export class ProfilesController {
@@ -23,6 +26,11 @@ export class ProfilesController {
   constructor(private readonly profilesService: ProfilesService) {}
 
   @Get()
+  @ApiOperation({ summary: 'List all profiles', description: 'Get paginated list of user profiles with optional filtering by role' })
+  @ApiQuery({ name: 'cursor', required: false, description: 'Pagination cursor' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Number of results per page', example: 20 })
+  @ApiQuery({ name: 'role', required: false, enum: ['artist', 'recruiter'], description: 'Filter by user role' })
+  @ApiResponse({ status: 200, description: 'List of profiles returned successfully' })
   async listProfiles(
     @Query('cursor') cursor?: string,
     @Query('limit') limit?: string,
@@ -37,12 +45,20 @@ export class ProfilesController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Get profile by ID', description: 'Get detailed profile information by profile ID' })
+  @ApiParam({ name: 'id', description: 'Profile UUID' })
+  @ApiResponse({ status: 200, description: 'Profile details returned successfully' })
+  @ApiResponse({ status: 404, description: 'Profile not found' })
   async getProfile(@Param('id') id: string) {
     this.logger.log(`🌐 GET /profiles/${id}`);
     return this.profilesService.getProfileById(id);
   }
 
   @Put(':id')
+  @ApiOperation({ summary: 'Update profile', description: 'Update your own profile. You can only update your own profile.' })
+  @ApiParam({ name: 'id', description: 'Profile UUID' })
+  @ApiResponse({ status: 200, description: 'Profile updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Cannot update other user\'s profile' })
   async updateProfile(
     @Param('id') id: string,
     @Body() updateProfileDto: UpdateProfileDto,
@@ -63,6 +79,10 @@ export class ProfilesController {
   }
 
   @Post(':id/become-recruiter')
+  @ApiOperation({ summary: 'Become a recruiter', description: 'Upgrade from artist to recruiter role. Requires company details.' })
+  @ApiParam({ name: 'id', description: 'Profile UUID' })
+  @ApiResponse({ status: 200, description: 'Successfully upgraded to recruiter' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Cannot upgrade other user\'s profile' })
   async becomeRecruiter(
     @Param('id') id: string,
     @Body() becomeRecruiterDto: BecomeRecruiterDto,
@@ -76,6 +96,10 @@ export class ProfilesController {
   }
 
   @Post(':id/upgrade-premium')
+  @ApiOperation({ summary: 'Upgrade to premium', description: 'Upgrade account to premium subscription' })
+  @ApiParam({ name: 'id', description: 'Profile UUID' })
+  @ApiResponse({ status: 200, description: 'Successfully upgraded to premium' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Cannot upgrade other user\'s profile' })
   async upgradePremium(
     @Param('id') id: string,
     @Body() upgradePremiumDto: UpgradePremiumDto,

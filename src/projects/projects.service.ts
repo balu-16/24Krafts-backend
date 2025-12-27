@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import {
   CreateProjectDto,
@@ -10,35 +10,21 @@ import { encodeCursor, decodeCursor, PaginatedResponse } from '../utils/cursor.u
 // Type for project data from Supabase
 export interface ProjectData {
   id: string;
-  name: string;
+  title: string;
   description?: string;
-  image?: string | Buffer | { type: string; data: number[] };
+  poster_url?: string;
+  start_date?: string;
+  end_date?: string;
   created_by: string;
   created_at: string;
   profiles?: { id: string; first_name: string; last_name: string; profile_photo_url?: string };
 }
 
-// Type for buffer-like objects
-interface BufferLike {
-  type?: string;
-  data?: number[];
-}
-
-function detectMime(buf: Buffer): string {
-  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
-  if (buf.length >= 4 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return 'image/png';
-  if (buf.length >= 3 && buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) return 'image/gif';
-  if (
-    buf.length >= 12 &&
-    buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
-    buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50
-  ) return 'image/webp';
-  return 'image/jpeg';
-}
-
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly supabaseService: SupabaseService) {}
+  private readonly logger = new Logger(ProjectsService.name);
+
+  constructor(private readonly supabaseService: SupabaseService) { }
 
   async listProjects(query: ListProjectsQuery): Promise<PaginatedResponse<ProjectData>> {
     const { cursor, limit = 20, profileId } = query;
@@ -75,56 +61,9 @@ export class ProjectsService {
     }
 
     const hasMore = data.length > limit;
-    // Normalize image to a data URI so mobile/web can render it consistently
-    const normalizeImage = (item: ProjectData): ProjectData => {
-      if (!item) return item;
-      const value = item.image;
-      if (!value) return item;
-      try {
-        if (typeof value === 'string') {
-          // Already a data URI
-          if (/^data:image\/.+;base64,/.test(value)) {
-            return item;
-          }
-          // Supabase bytea hex string
-          if (value.startsWith('\\x')) {
-            const buf = Buffer.from(value.slice(2), 'hex');
-            const mime = detectMime(buf);
-            const b64 = buf.toString('base64');
-            return { ...item, image: `data:${mime};base64,${b64}` };
-          }
-          // Plain base64 string: add prefix
-          const normalized = value.replace(/\s+/g, '');
-          const isBase64 = /^[A-Za-z0-9+/\n\r]+={0,2}$/.test(normalized);
-          if (isBase64) {
-            try {
-              const buf = Buffer.from(normalized, 'base64');
-              const mime = detectMime(buf);
-              return { ...item, image: `data:${mime};base64,${normalized}` };
-            } catch {
-              return { ...item, image: `data:image/jpeg;base64,${normalized}` };
-            }
-          }
-        } else if (typeof value === 'object' && value) {
-          const bufValue = value as BufferLike;
-          const dataArr = bufValue.type === 'Buffer' && Array.isArray(bufValue.data)
-            ? bufValue.data
-            : Array.isArray(value)
-              ? (value as unknown as number[])
-              : bufValue.data;
-          if (Array.isArray(dataArr)) {
-            const buf = Buffer.from(Uint8Array.from(dataArr));
-            const mime = detectMime(buf);
-            const b64 = buf.toString('base64');
-            return { ...item, image: `data:${mime};base64,${b64}` };
-          }
-        }
-      } catch {}
-      return item;
-    };
-
+    // poster_url is a text column, so no normalization needed - it's already a URL string
     const projectsRaw = hasMore ? data.slice(0, limit) : data;
-    const projects = projectsRaw.map(normalizeImage);
+    const projects = projectsRaw;
     const nextCursor = hasMore
       ? encodeCursor(data[limit - 1].created_at, data[limit - 1].id)
       : null;
@@ -151,77 +90,47 @@ export class ProjectsService {
       throw new NotFoundException('Project not found');
     }
 
-    // Normalize to data URI for a single project
-    if (data && typeof data.image === 'string' && data.image) {
-      try {
-        if (!/^data:image\/.+;base64,/.test(data.image)) {
-          if (data.image.startsWith('\\x')) {
-            const buf = Buffer.from(data.image.slice(2), 'hex');
-            const mime = detectMime(buf);
-            data.image = `data:${mime};base64,${buf.toString('base64')}`;
-          } else {
-            const normalized = data.image.replace(/\s+/g, '');
-            const isBase64 = /^[A-Za-z0-9+/\n\r]+={0,2}$/.test(normalized);
-            if (isBase64) {
-              try {
-                const buf = Buffer.from(normalized, 'base64');
-                const mime = detectMime(buf);
-                data.image = `data:${mime};base64,${normalized}`;
-              } catch {
-                data.image = `data:image/jpeg;base64,${normalized}`;
-              }
-            }
-          }
-        }
-      } catch {}
-    } else if (data && typeof data.image === 'object' && data.image) {
-      try {
-        const value = data.image as BufferLike;
-        const dataArr = value?.type === 'Buffer' && Array.isArray(value?.data)
-          ? value.data
-          : Array.isArray(value)
-            ? (value as unknown as number[])
-            : value?.data;
-        if (Array.isArray(dataArr)) {
-          const buf = Buffer.from(Uint8Array.from(dataArr));
-          const mime = detectMime(buf);
-          data.image = `data:${mime};base64,${buf.toString('base64')}`;
-        }
-      } catch {}
-    }
+    // poster_url is a text column (URL string), no normalization needed
     return data;
   }
 
   async createProject(createdBy: string, createProjectDto: CreateProjectDto) {
     const supabase = this.supabaseService.getAdminClient();
 
-    // Normalize and convert base64 image to Buffer for bytea column
-    const { image, ...rest } = createProjectDto as CreateProjectDto & { image?: string };
-    let imageBuffer = null;
+    // Map DTO fields to database schema
+    // Database has: title, description, poster_url (not image), start_date, end_date, created_by
+    const { image, ...rest } = createProjectDto;
+
+    const insertData: any = {
+      title: rest.title, // Database uses 'title' directly
+      description: rest.description,
+      created_by: createdBy,
+    };
+
+    // Map 'image' from DTO to 'poster_url' in database (text column, not bytea)
     if (image) {
-      try {
-        const normalized = (image as string)
-          .trim()
-          .replace(/^data:[^;]+;base64,/, '')
-          .replace(/\s+/g, '');
-        imageBuffer = Buffer.from(normalized, 'base64');
-      } catch (e) {
-        imageBuffer = null;
-      }
+      // If it's a data URI, keep it as is. If it's a URL, use it directly.
+      // The database column is 'poster_url' (text), so we store it as a string
+      insertData.poster_url = image;
+    }
+
+    // Add optional date fields if provided
+    if (rest.start_date) {
+      insertData.start_date = rest.start_date;
+    }
+    if (rest.end_date) {
+      insertData.end_date = rest.end_date;
     }
 
     const { data, error } = await supabase
       .from('projects')
-      .insert({
-        ...rest,
-        image: imageBuffer,
-        created_by: createdBy,
-      })
+      .insert(insertData)
       .select()
       .single();
 
     if (error) {
-      throw new Error('Failed to create project');
+      this.logger.error('Project creation error:', error);
+      throw new BadRequestException(`Failed to create project: ${error.message || 'Unknown error'}`);
     }
 
     return data;

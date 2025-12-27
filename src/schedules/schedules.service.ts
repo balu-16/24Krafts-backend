@@ -146,18 +146,19 @@ export class SchedulesService {
     const supabase = this.supabaseService.getAdminClient();
 
     // Verify the project exists and belongs to the recruiter
-    const { data: project } = await supabase
-      .from('posts')
-      .select('author_profile_id')
+    // Schedules reference the 'projects' table, not 'posts'
+    const { data: project, error: projectError } = await supabase
+      .from('projects')
+      .select('created_by')
       .eq('id', createScheduleDto.project_id)
       .single();
 
-    if (!project) {
+    if (projectError || !project) {
       throw new NotFoundException('Project not found');
     }
 
-    if (project.author_profile_id !== createdBy) {
-      throw new Error('You can only create schedules for your own projects');
+    if (project.created_by !== createdBy) {
+      throw new BadRequestException('You can only create schedules for your own projects');
     }
 
     const { data, error } = await supabase
@@ -173,42 +174,58 @@ export class SchedulesService {
       throw new BadRequestException(`Failed to create schedule: ${error.message}`);
     }
 
-    // Automatically add accepted applicants as schedule members
+    // Automatically add project members as schedule members
+    // Note: project_applications references posts (project postings), not projects
+    // So we add project_members instead, who are part of the actual project
     if (data) {
-      await this.addAcceptedApplicantsToSchedule(data.id, createScheduleDto.project_id);
+      await this.addProjectMembersToSchedule(data.id, createScheduleDto.project_id);
     }
 
     return data;
   }
 
-  private async addAcceptedApplicantsToSchedule(scheduleId: string, projectId: string) {
+  private async addProjectMembersToSchedule(scheduleId: string, projectId: string) {
     const supabase = this.supabaseService.getAdminClient();
 
-    // Get all accepted applicants for the project
-    const { data: acceptedApplicants } = await supabase
-      .from('project_applications')
-      .select('artist_profile_id')
-      .eq('project_id', projectId)
-      .eq('status', 'accepted');
+    // Get all members of the project (from project_members table)
+    // This is correct because project_members.project_id references projects.id
+    const { data: projectMembers, error } = await supabase
+      .from('project_members')
+      .select('profile_id')
+      .eq('project_id', projectId);
 
-    if (acceptedApplicants && acceptedApplicants.length > 0) {
-      const scheduleMembers = acceptedApplicants.map(app => ({
+    if (error) {
+      // Log error but don't fail schedule creation
+      console.warn(`Failed to fetch project members for schedule: ${error.message}`);
+      return;
+    }
+
+    if (projectMembers && projectMembers.length > 0) {
+      const scheduleMembers = projectMembers.map(member => ({
         schedule_id: scheduleId,
-        profile_id: app.artist_profile_id,
+        profile_id: member.profile_id,
         status: 'pending',
       }));
 
-      await supabase.from('schedule_members').insert(scheduleMembers);
+      const { error: insertError } = await supabase
+        .from('schedule_members')
+        .insert(scheduleMembers);
+
+      if (insertError) {
+        // Log error but don't fail schedule creation
+        console.warn(`Failed to add project members to schedule: ${insertError.message}`);
+      }
     }
   }
 
   async getRecruiterProjects(recruiterProfileId: string) {
     const supabase = this.supabaseService.getAdminClient();
 
+    // Get projects from the 'projects' table, not 'posts'
     const { data, error } = await supabase
-      .from('posts')
-      .select('id, title, description, status, applications_count, created_at')
-      .eq('author_profile_id', recruiterProfileId)
+      .from('projects')
+      .select('id, title, description, start_date, end_date, created_at')
+      .eq('created_by', recruiterProfileId)
       .order('created_at', { ascending: false });
 
     if (error) {
